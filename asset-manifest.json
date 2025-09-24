@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/TANCET-PREP-APP/static/css/main.fecf33d3.css",
+    "main.js": "/TANCET-PREP-APP/static/js/main.b4d58b76.js",
+    "static/js/453.f864dc34.chunk.js": "/TANCET-PREP-APP/static/js/453.f864dc34.chunk.js",
+    "index.html": "/TANCET-PREP-APP/index.html",
+    "main.fecf33d3.css.map": "/TANCET-PREP-APP/static/css/main.fecf33d3.css.map",
+    "main.b4d58b76.js.map": "/TANCET-PREP-APP/static/js/main.b4d58b76.js.map",
+    "453.f864dc34.chunk.js.map": "/TANCET-PREP-APP/static/js/453.f864dc34.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.fecf33d3.css",
+    "static/js/main.b4d58b76.js"
+  ]
+}
