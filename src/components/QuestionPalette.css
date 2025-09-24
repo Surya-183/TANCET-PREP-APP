@@ -1,0 +1,116 @@
+/* QuestionPalette.css - Professional styling for question palette component */
+.question-palette {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.palette-container {
+  width: 100%;
+}
+
+.palette-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.palette-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 1rem;
+}
+
+.palette-button {
+  aspect-ratio: 1;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.palette-button:hover {
+  border-color: #1976d2;
+  background: #f8f9ff;
+}
+
+.palette-button.current {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+.palette-button.answered {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.palette-button.review {
+  background: #ff9800;
+  color: white;
+  border-color: #ff9800;
+}
+
+.palette-button.answered.review {
+  background: linear-gradient(135deg, #4caf50 50%, #ff9800 50%);
+}
+
+/* Legend */
+.palette-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-dot.answered { background: #4caf50; }
+.legend-dot.current { background: #1976d2; }
+.legend-dot.review { background: #ff9800; }
+.legend-dot.not-answered { background: white; border: 1px solid #ddd; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .palette-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+  
+  .palette-legend {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .palette-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
