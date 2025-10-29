@@ -150,7 +150,7 @@ const CustomTestForm = () => {
               </div>
               <div className="preview-item">
                 <span className="preview-label">Duration:</span>
-                <span className="preview-value">{Math.ceil(totalQuestions * 1.5)} minutes</span>
+                <span className="preview-value">{Math.ceil(totalQuestions)} minutes</span>
               </div>
             </div>
           </div>

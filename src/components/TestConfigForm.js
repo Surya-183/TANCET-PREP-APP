@@ -42,7 +42,7 @@ const TestConfigForm = () => {
   };
 
   const questionOptions = [5, 10, 15, 20, 25, 30];
-  const duration = Math.ceil(questionCount * 1.5);
+  const duration = questionCount;
   const totalMarks = questionCount;
 
   return (

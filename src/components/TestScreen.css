@@ -497,3 +497,19 @@
     display: none;
   }
 }
+
+.logout-btn-top {
+  background: white;
+  color: #1565c0;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-btn-top:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-1px);
+}

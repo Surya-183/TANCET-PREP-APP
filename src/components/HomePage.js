@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser, fetchAuthSession } from '@aws-amplify/auth';
 import './HomePage.css';
 
 // Professional SVG Icons
@@ -9,8 +10,95 @@ const ComputerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" v
 const EnglishIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>;
 const DashboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>;
 
-const HomePage = () => {
+const HomePage = ({ onSignOut }) => {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [publishedTests, setPublishedTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [performanceStats, setPerformanceStats] = useState({
+    testsTaken: 0,
+    avgScore: 0,
+    bestScore: 0,
+    totalQuestions: 0
+  });
+
+  const API_BASE_URL = 'https://hcdufuk4fh.execute-api.us-east-1.amazonaws.com/dev';
+
+  useEffect(() => {
+    checkUserRole();
+    fetchPublishedTests();
+    fetchPerformanceStats();
+  }, []);
+
+  const checkUserRole = async () => {
+    try {
+      const user = await getCurrentUser();
+      console.log('Current user found:', user);
+      
+      // In Amplify v6, we need to get the session to access tokens
+      const { tokens } = await fetchAuthSession();
+      const groups = tokens?.idToken?.payload?.['cognito:groups'] || [];
+      console.log('User groups:', groups);
+      
+      const adminStatus = groups.includes('admin');
+      console.log('Setting isAdmin to:', adminStatus);
+      setIsAdmin(adminStatus);
+    } catch (err) {
+      console.error('Error checking user role:', err);
+    }
+  };
+
+  const fetchPublishedTests = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/tests?published=true`);
+      if (response.ok) {
+        const data = await response.json();
+        setPublishedTests(Array.isArray(data) ? data : []);
+      } else if (response.status === 404) {
+        console.log('Tests endpoint not implemented yet');
+      }
+    } catch (err) {
+      console.error('Error fetching published tests:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPerformanceStats = async () => {
+    try {
+      const user = await getCurrentUser();
+      const userId = user.username;
+      
+      // Try to fetch from backend first
+      try {
+        const response = await fetch(`${API_BASE_URL}/results/user/${userId}`);
+        if (response.ok) {
+          const results = await response.json();
+          if (Array.isArray(results) && results.length > 0) {
+            const testsTaken = results.length;
+            const totalScore = results.reduce((sum, r) => sum + (r.score || 0), 0);
+            const avgScore = Math.round(totalScore / testsTaken);
+            const bestScore = Math.max(...results.map(r => r.score || 0));
+            const totalQuestions = results.reduce((sum, r) => sum + (r.totalQuestions || 0), 0);
+            
+            setPerformanceStats({ testsTaken, avgScore, bestScore, totalQuestions });
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.log('Backend endpoint not available, using localStorage');
+      }
+      
+      // Fallback to localStorage
+      const statsKey = `userStats_${userId}`;
+      const savedStats = localStorage.getItem(statsKey);
+      if (savedStats) {
+        setPerformanceStats(JSON.parse(savedStats));
+      }
+    } catch (err) {
+      console.error('Error fetching performance stats:', err);
+    }
+  };
 
   const topics = [
     { name: 'Quantitative Aptitude', description: 'Sharpen your quantitative and problem-solving skills.', icon: <AptitudeIcon />, color: '#EF4444' },
@@ -34,8 +122,24 @@ const HomePage = () => {
              <DashboardIcon />
             Dashboard
           </a>
-          {/* Future links can be added here */}
+          {isAdmin && (
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              Admin Panel
+            </a>
+          )}
         </nav>
+        
+         {/* 🔹 Added Sign-Out Button */}
+        <footer className="sidebar-footer-elite">
+          <button className="logout-btn-sidebar" onClick={onSignOut}>
+            <span className="logout-icon">🚪</span>
+            <span>Sign Out</span>
+          </button>
+        </footer>
       </aside>
 
       <main className="homepage-main-content-elite">
@@ -69,21 +173,49 @@ const HomePage = () => {
                 </div>
             </section>
 
-             <section>
+             {publishedTests.length > 0 && (
+              <section>
+                <h3 className="section-title-elite">Published Tests</h3>
+                <div className="published-tests-grid">
+                  {publishedTests.map((test) => (
+                    <div key={test.testId} className="published-test-card">
+                      <h4>{test.testName || 'Untitled Test'}</h4>
+                      <p className="test-info">
+                        <span>{test.questionCount || 0} Questions</span>
+                        <span>•</span>
+                        <span>{test.durationMins || 0} Minutes</span>
+                      </p>
+                      <button 
+                        onClick={() => navigate(`/test/${test.testId}`)}
+                        className="start-test-btn"
+                      >
+                        Start Test
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
                 <h3 className="section-title-elite">Performance Snapshot</h3>
                 <div className="performance-snapshot">
                     <div className="snapshot-grid">
                         <div className="snapshot-item">
                             <h4>Tests Taken</h4>
-                            <p>0</p>
+                            <p>{performanceStats.testsTaken}</p>
                         </div>
                         <div className="snapshot-item">
                             <h4>Avg. Score</h4>
-                            <p>0%</p>
+                            <p>{performanceStats.avgScore}%</p>
                         </div>
                         <div className="snapshot-item">
-                            <h4>Avg. Accuracy</h4>
-                            <p>0%</p>
+                            <h4>Best Score</h4>
+                            <p>{performanceStats.bestScore}%</p>
+                        </div>
+                        <div className="snapshot-item">
+                            <h4>Questions Solved</h4>
+                            <p>{performanceStats.totalQuestions}</p>
                         </div>
                     </div>
                 </div>
@@ -107,16 +239,16 @@ const HomePage = () => {
                             </div>
                         </div>
                         <div className="topic-card-body-elite">
-                           <p>{topic.description}</p>
+                        <p>{topic.description}</p>
                         </div>
                     </div>
                 ))}
             </div>
             </section>
         </div>
-      </main>
+    </main>
     </div>
-  );
+);
 };
 
 export default HomePage;

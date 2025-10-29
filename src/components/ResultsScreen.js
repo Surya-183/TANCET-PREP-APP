@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { getCurrentUser } from '@aws-amplify/auth';
 import './ResultsScreen.css';
 
-const ResultsScreen = () => {
+const ResultsScreen = ({ onSignOut }) => {
   const { resultId } = useParams();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,9 @@ const ResultsScreen = () => {
         }
         const resultData = await response.json();
         setResult(resultData);
+        
+        // Update localStorage stats
+        updateUserStats(resultData);
       } catch (err) {
         console.error('Error fetching results:', err);
         setError(err.message);
@@ -34,7 +38,50 @@ const ResultsScreen = () => {
     fetchResults();
   }, [resultId]);
 
-  const calculatePercentage = () => {
+  const updateUserStats = async (resultData) => {
+    try {
+      const user = await getCurrentUser();
+      const userId = user.username;
+      const statsKey = `userStats_${userId}`;
+      const processedKey = `processedResults_${userId}`;
+      
+      // Check if already processed
+      const processedResults = JSON.parse(localStorage.getItem(processedKey) || '[]');
+      if (processedResults.includes(resultId)) {
+        return;
+      }
+      
+      const savedStats = localStorage.getItem(statsKey);
+      const currentStats = savedStats ? JSON.parse(savedStats) : {
+        testsTaken: 0,
+        avgScore: 0,
+        bestScore: 0,
+        totalQuestions: 0
+      };
+      
+      const score = Math.round((resultData.correctAnswers / resultData.totalQuestions) * 100);
+      const newTestsTaken = currentStats.testsTaken + 1;
+      const newTotalScore = (currentStats.avgScore * currentStats.testsTaken) + score;
+      const newAvgScore = Math.round(newTotalScore / newTestsTaken);
+      const newBestScore = Math.max(currentStats.bestScore, score);
+      const newTotalQuestions = currentStats.totalQuestions + resultData.totalQuestions;
+      
+      const updatedStats = {
+        testsTaken: newTestsTaken,
+        avgScore: newAvgScore,
+        bestScore: newBestScore,
+        totalQuestions: newTotalQuestions
+      };
+      
+      localStorage.setItem(statsKey, JSON.stringify(updatedStats));
+      processedResults.push(resultId);
+      localStorage.setItem(processedKey, JSON.stringify(processedResults));
+    } catch (err) {
+      console.error('Error updating user stats:', err);
+    }
+  };
+
+const calculatePercentage = () => {
     if (!result || !result.totalQuestions) return 0;
     return Math.round((result.correctAnswers / result.totalQuestions) * 100);
   };
@@ -84,11 +131,14 @@ const ResultsScreen = () => {
 
   return (
     <div className="results-screen">
-      {/* Header */}
+    
       <div className="results-header">
         <Link to="/" className="back-link">← Back to Home</Link>
-        <h1>Test Results</h1>
-        <p>Your performance summary</p>
+        <div className="results-title-container">
+          <h1>Test Results</h1>
+          <p>Your performance summary</p>
+        </div>
+        <button className="logout-btn-top" onClick={onSignOut}>Sign Out</button>
       </div>
 
       <div className="results-container">
@@ -173,48 +223,64 @@ const ResultsScreen = () => {
 
             {showReview && (
               <div className="questions-review">
-                {result.questionReview.map((question, index) => (
-                  <div 
-                    key={index} 
-                    className={`question-review-item ${question.isCorrect ? 'correct' : 'incorrect'}`}
-                  >
-                    <div className="question-header">
-                      <span className="question-number">Question {index + 1}</span>
-                      <span className={`question-status ${question.isCorrect ? 'correct' : 'incorrect'}`}>
-                        {question.isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                      </span>
-                    </div>
-                    
-                    <div className="question-text">
-                      <p>{question.question}</p>
-                    </div>
+                {result.questionReview.map((question, index) => {
+                  // Handle user answer (index or string)
+                  const userAnswer = question.userAnswer !== undefined
+                    ? (typeof question.userAnswer === "number"
+                        ? question.options?.[question.userAnswer]
+                        : question.userAnswer)
+                    : "Not answered";
 
-                    <div className="answer-info">
-                      <div className="answer-row">
-                        <span className="answer-label">Your Answer:</span>
-                        <span className={`answer-value ${question.isCorrect ? 'correct' : 'incorrect'}`}>
-                          {question.userAnswer !== undefined ? question.options?.[question.userAnswer] || 'No answer' : 'Not answered'}
+                  // Handle correct answer (index or string)
+                  const correctAnswer = question.correctAnswer !== undefined
+                    ? (typeof question.correctAnswer === "number"
+                        ? question.options?.[question.correctAnswer]
+                        : question.correctAnswer)
+                    : "Not available";
+
+                  return (
+                    <div 
+                      key={index} 
+                      className={`question-review-item ${question.isCorrect ? 'correct' : 'incorrect'}`}
+                    >
+                      <div className="question-header">
+                        <span className="question-number">Question {index + 1}</span>
+                        <span className={`question-status ${question.isCorrect ? 'correct' : 'incorrect'}`}>
+                          {question.isCorrect ? '✓ Correct' : '✗ Incorrect'}
                         </span>
                       </div>
                       
-                      {!question.isCorrect && (
+                      <div className="question-text">
+                        <p>{question.question}</p>
+                      </div>
+
+                      <div className="answer-info">
                         <div className="answer-row">
-                          <span className="answer-label">Correct Answer:</span>
-                          <span className="answer-value correct">
-                            {question.options?.[question.correctAnswer] || 'Not available'}
+                          <span className="answer-label">Your Answer:</span>
+                          <span className={`answer-value ${question.isCorrect ? 'correct' : 'incorrect'}`}>
+                            {userAnswer}
                           </span>
+                        </div>
+                        
+                        {!question.isCorrect && (
+                          <div className="answer-row">
+                            <span className="answer-label">Correct Answer:</span>
+                            <span className="answer-value correct">
+                              {correctAnswer}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {question.solution && (
+                        <div className="solution-section">
+                          <h4>Solution:</h4>
+                          <p>{question.solution}</p>
                         </div>
                       )}
                     </div>
-
-                    {question.solution && (
-                      <div className="solution-section">
-                        <h4>Solution:</h4>
-                        <p>{question.solution}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

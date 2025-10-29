@@ -53,41 +53,6 @@
   color: white;
 }
 
-/* Header */
-.results-header {
-  background: linear-gradient(135deg, #1976d2, #1565c0);
-  color: white;
-  padding: 2rem;
-  text-align: center;
-  position: relative;
-}
-
-.back-link {
-  position: absolute;
-  left: 2rem;
-  top: 2rem;
-  color: rgba(255,255,255,0.9);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.back-link:hover {
-  color: white;
-  text-decoration: none;
-}
-
-.results-header h1 {
-  font-size: 2.2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.results-header p {
-  font-size: 1.1rem;
-  opacity: 0.9;
-}
-
 /* Main Container */
 .results-container {
   max-width: 1000px;
@@ -167,6 +132,90 @@
   margin-bottom: 2rem;
 }
 
+/* --- Enhanced Header Styles --- */
+
+.results-header {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+}
+
+.back-link {
+  color: #fff;
+  text-decoration: none;
+  background-color: rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.back-link:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+  text-decoration: none;
+  color: white;
+}
+
+/* Container for the H1 and P tags */
+.results-title-container {
+  position: relative;
+  padding-bottom: 10px;
+}
+
+/* The main "Test Results" title - Corrected Size */
+.results-title-container h1 {
+  font-size: 2.5rem; /* Reduced from 3.5rem */
+  font-weight: 700;  /* Reduced from 800 */
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+/* The decorative underline effect */
+.results-title-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px; /* Adjusted width */
+  height: 4px;
+  background: linear-gradient(90deg, #FF9800, #FFC107, #FF9800);
+  border-radius: 3px;
+}
+
+/* The "Your performance summary" subtitle */
+.results-title-container p {
+  font-size: 1rem; /* Reduced from 1.15rem */
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+/* Sign Out Button - Corrected for Flexbox */
+.logout-btn-top {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-btn-top:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+
+/* Metric Cards */
 .metric-card {
   background: white;
   border-radius: 12px;
@@ -403,6 +452,7 @@
   color: #1976d2;
 }
 
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .results-container {
@@ -436,16 +486,19 @@
     flex-direction: column;
     align-items: center;
   }
-  
-  .back-link {
-    position: static;
-    display: block;
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-  
+    
   .results-header {
     padding: 1.5rem 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .results-title-container h1 {
+    font-size: 2.2rem;
+  }
+  
+  .results-title-container p {
+    font-size: 0.9rem;
   }
 }
 
@@ -463,5 +516,14 @@
     flex-direction: column;
     gap: 0.5rem;
     align-items: flex-start;
+  }
+
+  .results-title-container h1 {
+    font-size: 2rem;
+  }
+  
+  .results-title-container::after {
+    width: 80px;
+    height: 4px;
   }
 }

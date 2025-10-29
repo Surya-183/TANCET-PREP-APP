@@ -1,0 +1,58 @@
+/* src/components/TopBar.css */
+.topbar {
+  width: 100%;
+  background: #0b2e70;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-symbol {
+  font-size: 26px;
+  background: #fff2;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.topbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.topbar-welcome {
+  font-size: 15px;
+}
+
+.signout-btn {
+  background: #fff;
+  color: #0b2e70;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.signout-btn:hover {
+  background: #f3f4f6;
+}

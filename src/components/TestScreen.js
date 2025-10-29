@@ -1,22 +1,55 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '@aws-amplify/auth';
 import './TestScreen.css';
 
-const TestScreen = () => {
+const TestScreen = ({ onSignOut }) => {
   const { testId } = useParams();
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [reviewFlags, setReviewFlags] = useState(new Set());
-  const [timeLeft, setTimeLeft] = useState(600);
+  const [timeLeft, setTimeLeft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [testInfo, setTestInfo] = useState({});
   const [error, setError] = useState(null);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const timerRef = useRef(null);
 
-  const API_BASE_URL = 'https://hcdufuk4fh.execute-api.us-east-1.amazonaws.com/dev';
+  const API_BASE_URL =
+    process.env.REACT_APP_API_BASE_URL ||
+    'https://hcdufuk4fh.execute-api.us-east-1.amazonaws.com/dev';
+
+  // ✅ Function to normalize DynamoDB-typed JSON to plain JS objects
+  const normalizeQuestions = (questionList) => {
+    return questionList.map((q) => {
+      const normalized = { ...q };
+
+      // Normalize options array
+      if (Array.isArray(q.options)) {
+        normalized.options = q.options.map((opt) => {
+          if (opt && typeof opt === 'object') {
+            if ('S' in opt) return opt.S;
+            if ('N' in opt) return opt.N;
+          }
+          return opt;
+        });
+      }
+
+      // Normalize answer
+      if (q.answer && typeof q.answer === 'object' && 'S' in q.answer) {
+        normalized.answer = q.answer.S;
+      }
+
+      // Normalize solution
+      if (q.solution && typeof q.solution === 'object' && 'S' in q.solution) {
+        normalized.solution = q.solution.S;
+      }
+
+      return normalized;
+    });
+  };
 
   const fetchTestData = async () => {
     try {
@@ -27,14 +60,32 @@ const TestScreen = () => {
         throw new Error('Failed to fetch test data');
       }
       const data = await response.json();
-      const testQuestions = data.questions || [];
+      const rawQuestions = data.questions || [];
+
+      // ✅ Normalize DynamoDB typed data to plain values
+      const testQuestions = normalizeQuestions(rawQuestions);
+
+      const storageKey = `testState_${testId}`;
+      const savedStateJSON = sessionStorage.getItem(storageKey);
+      const savedState = savedStateJSON ? JSON.parse(savedStateJSON) : null;
+
       setQuestions(testQuestions);
+      const initialDuration = (data.durationMins || testQuestions.length) * 60;
+
       setTestInfo({
-        testName: data.testName || 'Syllogism - 01',
+        testName: data.testName || 'Practice Test',
         questionCount: testQuestions.length,
-        durationMins: data.durationMins || Math.ceil(testQuestions.length * 1.5)
+        durationMins: data.durationMins || testQuestions.length,
       });
-      setTimeLeft((data.durationMins || Math.ceil(testQuestions.length * 1.5)) * 60);
+
+      setReviewFlags(new Set(savedState?.savedReviewFlags || []));
+      setAnswers(savedState?.savedAnswers || {});
+      setCurrentQuestion(savedState?.savedCurrentQuestion || 0);
+      setTimeLeft(
+        savedState?.savedTimeLeft !== undefined
+          ? savedState.savedTimeLeft
+          : initialDuration
+      );
     } catch (err) {
       console.error('Error fetching test data:', err);
       setError(err.message);
@@ -43,14 +94,32 @@ const TestScreen = () => {
     }
   };
 
+  // Save session state
+  useEffect(() => {
+    if (!loading && testId && timeLeft !== null) {
+      const stateToSave = {
+        savedAnswers: answers,
+        savedCurrentQuestion: currentQuestion,
+        savedTimeLeft: timeLeft,
+        savedReviewFlags: Array.from(reviewFlags),
+      };
+      sessionStorage.setItem(
+        `testState_${testId}`,
+        JSON.stringify(stateToSave)
+      );
+    }
+  }, [answers, currentQuestion, timeLeft, testId, loading, reviewFlags]);
+
+  // Load test data
   useEffect(() => {
     if (testId) {
       fetchTestData();
     }
   }, [testId]);
 
+  // Timer logic
   useEffect(() => {
-    if (!loading && questions.length > 0) {
+    if (!loading && questions.length > 0 && timeLeft > 0) {
       startTimer();
     }
     return () => {
@@ -58,11 +127,13 @@ const TestScreen = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [loading, questions]);
+  }, [loading, questions, timeLeft]);
 
   const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+
     timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
           handleSubmitTest();
@@ -74,20 +145,26 @@ const TestScreen = () => {
   };
 
   const formatTime = (seconds) => {
+    if (seconds === null) return '0:00';
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerSelect = (questionIndex, selectedOption) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionIndex]: selectedOption
-    }));
+  const handleAnswerSelect = (questionIndex, selectedOptionIndex) => {
+    setAnswers((prev) => {
+      if (prev[questionIndex] === selectedOptionIndex) {
+        const newAnswers = { ...prev };
+        delete newAnswers[questionIndex];
+        return newAnswers;
+      } else {
+        return { ...prev, [questionIndex]: selectedOptionIndex };
+      }
+    });
   };
 
   const handleMarkForReview = () => {
-    setReviewFlags(prev => {
+    setReviewFlags((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(currentQuestion)) {
         newSet.delete(currentQuestion);
@@ -100,7 +177,7 @@ const TestScreen = () => {
 
   const handleSaveAndNext = () => {
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
+      setCurrentQuestion((prev) => prev + 1);
     }
   };
 
@@ -110,7 +187,8 @@ const TestScreen = () => {
 
   const getQuestionStatus = (questionIndex) => {
     if (questionIndex === currentQuestion) return 'current';
-    if (answers[questionIndex] !== undefined && reviewFlags.has(questionIndex)) return 'answered review';
+    if (answers[questionIndex] !== undefined && reviewFlags.has(questionIndex))
+      return 'answered review';
     if (answers[questionIndex] !== undefined) return 'answered';
     if (reviewFlags.has(questionIndex)) return 'review';
     return '';
@@ -121,26 +199,23 @@ const TestScreen = () => {
       clearInterval(timerRef.current);
     }
 
-    const finalAnswers = {};
-    for (let i = 0; i < questions.length; i++) {
-      if (answers[i] !== undefined) {
-        finalAnswers[i] = answers[i];
-      }
-    }
-
     try {
+      const currentUser = await getCurrentUser();
+      const userId = currentUser?.userId || currentUser?.username || 'anonymous';
+      const userEmail = currentUser?.signInDetails?.loginId || 'anonymous@example.com';
+
       const resultData = {
         testId,
-        answers: finalAnswers,
+        answers: answers,
         timeSpent: (testInfo.durationMins * 60) - timeLeft,
+        userId,
+        userEmail
       };
 
       const response = await fetch(`${API_BASE_URL}/submit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(resultData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resultData),
       });
 
       if (!response.ok) {
@@ -148,6 +223,7 @@ const TestScreen = () => {
       }
 
       const result = await response.json();
+      sessionStorage.removeItem(`testState_${testId}`);
       navigate(`/results/${result.resultId}`);
     } catch (error) {
       console.error('Error submitting test:', error);
@@ -192,18 +268,11 @@ const TestScreen = () => {
 
   return (
     <div className="test-screen">
-      {/* Header */}
       <div className="test-header">
         <div className="header-left">
-          <div className="test-logo"> TANCET Preparation</div>
-          <div className="test-title">{testInfo.testName || 'Syllogism - 01'}</div>
-          
+          <div className="test-logo">TANCET Preparation</div>
+          <div className="test-title">{testInfo.testName}</div>
         </div>
-        
-        <div className="header-center">
-          {/* Removed Zoom buttons */}
-        </div>
-        
         <div className="header-right">
           <div className="timer">
             Time Left<br />
@@ -212,28 +281,11 @@ const TestScreen = () => {
           <div className="question-info">
             Question No. {currentQuestion + 1}
           </div>
-          <div className="user-info">
-            <div className="profile-pics">
-        
-            </div>
-          </div>
         </div>
       </div>
 
       <div className="test-body">
-        {/* Left Sidebar */}
         <div className="test-sidebar">
-          <div className="symbols-instructions">
-            <button className="tab-btn active">SYMBOLS</button>
-            <button className="tab-btn">INSTRUCTIONS</button>
-          </div>
-          
-          <div className="part-section">
-            <div className="part-label">PART-A</div>
-          </div>
-          
-          <div className="test-label">Test</div>
-          
           <div className="question-palette">
             <div className="palette-grid">
               {questions.map((_, index) => (
@@ -247,9 +299,7 @@ const TestScreen = () => {
               ))}
             </div>
           </div>
-          
           <div className="part-analysis">
-            <div className="analysis-title">PART-A Analysis</div>
             <div className="analysis-stats">
               <div className="stat-item">
                 <span className="stat-label">Answered</span>
@@ -257,30 +307,33 @@ const TestScreen = () => {
               </div>
               <div className="stat-item">
                 <span className="stat-label">Not Answered</span>
-                <span className="stat-value">{questions.length - answeredCount}</span>
+                <span className="stat-value">
+                  {questions.length - answeredCount}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="test-content">
           <div className="question-header">
             <span>Question No. {currentQuestion + 1}</span>
             <div className="question-actions">
-              <button 
+              <button
                 className="action-btn mark-review-btn"
                 onClick={handleMarkForReview}
               >
-                Mark for Review
+                {reviewFlags.has(currentQuestion)
+                  ? 'Unmark for Review'
+                  : 'Mark for Review'}
               </button>
-              <button 
+              <button
                 className="action-btn save-next-btn"
                 onClick={handleSaveAndNext}
               >
                 Save & Next
               </button>
-              <button 
+              <button
                 className="action-btn submit-test-btn"
                 onClick={confirmSubmit}
               >
@@ -302,7 +355,10 @@ const TestScreen = () => {
                     name={`question-${currentQuestion}`}
                     value={optionIndex}
                     checked={answers[currentQuestion] === optionIndex}
-                    onChange={() => handleAnswerSelect(currentQuestion, optionIndex)}
+                    onClick={() =>
+                      handleAnswerSelect(currentQuestion, optionIndex)
+                    }
+                    readOnly
                   />
                   <span className="option-text">{option}</span>
                 </label>
@@ -310,29 +366,23 @@ const TestScreen = () => {
             </div>
           )}
         </div>
-
-        {/* Right Sidebar */}
-        <div className="test-right-sidebar">
-          <div className="answered-stats">
-            <div className="stats-title">Total Questions Answered: {answeredCount}</div>
-            <div className="time-info">
-              <div className="last-time">Last <span className="time-highlight">{formatTime((testInfo.durationMins * 60) - timeLeft)}</span> Minutes</div>
-            </div>
-          </div>
-          
-          {/* Removed Language Section */}
-        </div>
       </div>
 
-      {/* Submit Dialog */}
       {showSubmitDialog && (
         <div className="submit-dialog-overlay">
           <div className="submit-dialog">
             <h3>Submit Test</h3>
             <p>Are you sure you want to submit the test?</p>
-            <p><strong>Total Questions:</strong> {questions.length}</p>
-            <p><strong>Answered:</strong> {answeredCount}</p>
-            <p><strong>Not Answered:</strong> {questions.length - answeredCount}</p>
+            <p>
+              <strong>Total Questions:</strong> {questions.length}
+            </p>
+            <p>
+              <strong>Answered:</strong> {answeredCount}
+            </p>
+            <p>
+              <strong>Not Answered:</strong>{' '}
+              {questions.length - answeredCount}
+            </p>
             <div className="dialog-actions">
               <button className="dialog-btn cancel" onClick={cancelSubmit}>
                 Cancel

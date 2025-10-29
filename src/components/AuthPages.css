@@ -1,0 +1,95 @@
+/* src/components/AuthPages.css */
+:root{
+  --brand:#0b74ff;
+  --bg:#f5f9fb;
+  --card:#fff;
+  --muted:#6b7280;
+}
+
+*{box-sizing:border-box}
+
+body, html, #root { height:100%; margin:0; font-family:Inter, system-ui, Arial, sans-serif; background:var(--bg); }
+
+.auth-page {
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:32px 16px;
+}
+
+/* header */
+.auth-header{
+  width:100%;
+  max-width:1100px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin-bottom:18px;
+}
+.auth-logo{
+  width:48px;
+  height:48px;
+  object-fit:contain;
+}
+.brand-highlight{ color:var(--brand); }
+.auth-header h1{ margin:0; font-size:20px; }
+.auth-header .lead{ margin:0; color:var(--muted); font-size:13px }
+
+/* card wrapper to center */
+.auth-card-wrapper{
+  width:100%;
+  max-width:460px;
+  display:flex;
+  justify-content:center;
+}
+
+/* card */
+.auth-form{
+  background:var(--card);
+  padding:28px 30px;
+  border-radius:10px;
+  box-shadow: 0 8px 30px rgba(17,24,39,0.06);
+  width:100%;
+}
+.auth-form h2{ margin:0 0 12px 0; font-size:22px; text-align:center; }
+.auth-form label{ display:block; margin-top:10px; font-weight:600; color:#111827; font-size:13px; }
+.auth-form input{
+  width:100%;
+  padding:10px 12px;
+  margin-top:6px;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  font-size:14px;
+}
+.auth-form button{
+  width:100%;
+  margin-top:18px;
+  padding:12px;
+  border-radius:8px;
+  background:var(--brand);
+  color:white;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.auth-symbol{
+  width:56px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:30px;
+  border-radius:10px;
+  background:linear-gradient(135deg,#e6f0ff,#cfe6ff);
+  box-shadow:0 6px 18px rgba(11,116,255,0.08);
+}
+
+.auth-form .link{ color:var(--brand); cursor:pointer; font-weight:600; }
+.switch-text{ margin-top:14px; text-align:center; color:var(--muted); font-size:14px; }
+.info-text{ color:#0b74ff; margin-top:12px; text-align:center; }
+.error-text{ color:#e11d48; margin-top:12px; text-align:center; }
+.small{ color:var(--muted); font-size:13px; margin-bottom:8px; }
+.confirm-actions{ display:flex; justify-content:space-between; margin-top:10px; gap:8px; }
+.link-btn{ background:transparent; border:none; color:var(--brand); cursor:pointer; padding:0; font-weight:600; }
